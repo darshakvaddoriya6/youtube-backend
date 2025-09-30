@@ -6,12 +6,21 @@ const app = express()
 
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
-    credentials: ture
+    credentials: true,
 }))
-app.use(express.jason({limit: "16kb"}))
-app.use(express.urlencoded({extended: ture,limit: "16kb"}))
+app.use(express.json({limit: "16kb"}))
+app.use(express.urlencoded({extended: true,limit: "16kb"}))
 app.use(express.static("public"))
 app.use(cookieParser()) 
 
+// routes import 
+import userRouter from "./routes/user.routes.js"
 
-export default {app};
+
+//rotes declaration
+app.use("/api/v1/users", userRouter)
+
+
+// http://localhost:8000/api/v1/users/register
+
+export { app }

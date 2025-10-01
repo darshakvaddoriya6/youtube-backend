@@ -15,16 +15,13 @@ const uploadOnCloudinary = async (localFilePath) => {
             (localFilePath, {
                 resource_type: "auto"
             })
-        console.log("File has been uoloade on coludianry", response.url);
+        fs.unlinkSync(localFilePath)
         return response
     } catch (error) {
         fs.unlinkSync(localFilePath)
-        return  null
+        return null
     }
 }
 
-cloudinary.v2.uploader.upload("https://upload.wikimedia.org/wikipedia/commons/0/01/Charvet_shirt.jpg",
-    { public_id: "wiki_shirt", })
-    .then(result => console.log(result));
 
-export {uploadOnCloudinary}
+export { uploadOnCloudinary }

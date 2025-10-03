@@ -23,5 +23,21 @@ const uploadOnCloudinary = async (localFilePath) => {
     }
 }
 
+// Delete by public_id, trying video first then image
+const DeleteFile = async (publicId) => {
+    try {
+        if (!publicId) return null
+        // Try deleting as video
+        const videoDelete = await cloudinary.uploader.destroy(publicId, { resource_type: "video" })
+        if (videoDelete && (videoDelete.result === "ok" || videoDelete.result === "not found")) {
+            return videoDelete
+        }
+        // Fallback: try deleting as image
+        const imageDelete = await cloudinary.uploader.destroy(publicId, { resource_type: "image" })
+        return imageDelete
+    } catch (error) {
+        return null
+    }
+}
 
-export { uploadOnCloudinary }
+export { uploadOnCloudinary, DeleteFile }

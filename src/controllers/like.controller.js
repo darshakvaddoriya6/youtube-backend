@@ -1,5 +1,5 @@
 import { Like } from "../models/like.model.js";
-import { ApiErrors } from "../utils/ApiError.js";
+import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -8,7 +8,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
         const { videoId } = req.params;
         const { videoOwnerId } = req.params;
         const user = req.user._id;
-        if (!videoId) throw new ApiErrors(400, "Video ID is required");
+        if (!videoId) throw new ApiError(400, "Video ID is required");
 
         const existingLike = await Like.findOne({
             video: videoId,
@@ -29,7 +29,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
             video: videoId
         });
         if (!createVideoLike) {
-            throw new ApiErrors(500, "Failed to create video like");
+            throw new ApiError(500, "Failed to create video like");
         }
         return res
             .status(201)
@@ -56,13 +56,11 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
 const toggleTweetLike = asyncHandler(async (req, res) => {
     try {
         const { tweetId, tweetOwnerId } = req.params;
-        const user = req.user._id;
+        const user = req?.user._id;
 
-        if (!tweetId) throw new ApiErrors(400, "Tweet ID is required");
+        if (!tweetId) throw new ApiError(400, "Tweet ID is required");
 
-        if (!tweetOwnerId)
-            throw new ApiErrors(400, "Tweet Owner ID is required");
-
+       
         const existingLike = await Like.findOne({
             tweets: tweetId,
             likedBy: user,
@@ -83,7 +81,7 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
         });
 
         if (!createTweetLike) {
-            throw new ApiErrors(500, "Failed to create tweet like");
+            throw new ApiError(500, "Failed to create tweet like");
         }
 
         return res
@@ -111,9 +109,9 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
 const toggleCommentLike = asyncHandler(async (req, res) => {
     try {
         const { commentId, commentOwnerId } = req.params;
-        const user = req.user._id;
+        const user = req?.user._id;
 
-        if (!commentId) throw new ApiErrors(400, "Comment ID is required");
+        if (!commentId) throw new ApiError(400, "Comment ID is required");
 
         const existingLike = await Like.findOne({
             comment: commentId,
@@ -137,7 +135,7 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
         });
 
         if (!createCommentLike) {
-            throw new ApiErrors(500, "Failed to create comment like");
+            throw new ApiError(500, "Failed to create comment like");
         }
 
         return res
@@ -175,7 +173,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
         }).populate("video");
 
         if (!likedVideos) {
-            throw new ApiErrors(404, "No liked videos found for this user");
+            throw new ApiError(404, "No liked videos found for this user");
         }
 
         const reverseLikedVideos = likedVideos.toReversed();

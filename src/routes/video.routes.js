@@ -2,11 +2,9 @@ import { Router } from 'express';
 import {
     deleteVideo,
     getAllVideos,
-    getVideoById,
-    publishAVideo,
-    togglePublishStatus,
-    updateVideo,
-    debugVideos,
+    getVideo,
+    publishVideo,
+    updateVideo
 } from "../controllers/video.controller.js"
 import {verifyJWT} from "../middlewares/auth.middleware.js"
 import {upload} from "../middlewares/multer.middlewares.js"
@@ -29,12 +27,12 @@ router
             },
             
         ]),
-        publishAVideo
+        publishVideo
     );
 
 router
     .route("/:videoId")
-    .get(getVideoById)
+    .get(getVideo)
     .delete(deleteVideo)
     .patch(
         upload.fields([
@@ -50,9 +48,5 @@ router
         updateVideo
     );
 
-router.route("/toggle/publish/:videoId").patch(togglePublishStatus);
-
-// Debug route
-router.route("/debug").get(debugVideos);
 
 export default router

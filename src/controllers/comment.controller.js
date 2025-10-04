@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { Comment } from "../models/comment.model.js";
-import { ApiErrors } from "../utils/ApiError.js";
+import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -33,10 +33,10 @@ const addComment = asyncHandler(async (req, res) => {
     try {
         const { videoId } = req.params;
         const { content } = req.body;
-        const user = req.user._id;
+        const user = req?.user._id;
 
         if (!content || !videoId)
-            throw new ApiErrors(400, "Content and Video ID are required");
+            throw new ApiError(400, "Content and Video ID are required");
 
         const newComment = await Comment.create({
             owner: user,
@@ -70,7 +70,7 @@ const updateComment = asyncHandler(async (req, res) => {
         const { content } = req.body;
 
         if (!content || !commentId)
-            throw new ApiErrors(400, "Content and Comment ID are required");
+            throw new ApiError(400, "Content and Comment ID are required");
 
         const updatedComment = await Comment.findOneAndUpdate(
             { _id: commentId },
@@ -79,7 +79,7 @@ const updateComment = asyncHandler(async (req, res) => {
         );
 
         if (!updatedComment) {
-            throw new ApiErrors(404, "Comment not found or not authorized");
+            throw new ApiError(404, "Comment not found or not authorized");
         }
 
         return res
@@ -113,7 +113,7 @@ const deleteComment = asyncHandler(async (req, res) => {
         });
 
         if (!deletedComment) {
-            throw new ApiErrors(404, "Comment not found or not authorized");
+            throw new ApiError(404, "Comment not found or not authorized");
         }
 
         return res

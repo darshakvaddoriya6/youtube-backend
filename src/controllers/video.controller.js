@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
 import { User } from "../models/user.model.js";
 import { Video } from "../models/video.model.js";
-import { ApiErrors } from "../utils/ApiError.js";
+import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import uploadFileOnCloudinary from "../utils/uploadOnCloudinary.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js"
 
 const publishVideo = asyncHandler(async (req, res) => {
     try {
@@ -13,7 +13,7 @@ const publishVideo = asyncHandler(async (req, res) => {
         //view duration
         //check for the required fields.
         if (!title) {
-            throw new ApiErrors(400, "Title is required.");
+            throw new ApiError(400, "Title is required.");
         }
 
         const owner = req?.user._id;
@@ -23,30 +23,25 @@ const publishVideo = asyncHandler(async (req, res) => {
         const thumbnailLocalPath = req?.files?.thumbnail?.[0]?.path;
 
         if (!videoLocalPath || !thumbnailLocalPath) {
-            throw new ApiErrors(400, "Fields not uploaded correctly.");
+            throw new ApiError(400, "Fields not uploaded correctly.");
         }
 
-        const video = await uploadFileOnCloudinary(videoLocalPath);
-        const thumbnail = await uploadFileOnCloudinary(thumbnailLocalPath);
+        const video = await uploadOnCloudinary(videoLocalPath);
+        const thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
 
         const publishedVideo = await Video.create({
             title,
             description,
-            videoFile: {
-                url: video.url,
-                public_id: video.public_id
-            },
-            thumbnail: {
-                url: thumbnail.url,
-                public_id: thumbnail.public_id
-            },
+            videoFile: video.url,
+            thumbnail: thumbnail.url,
+            videoFilePublicId: video.public_id,
+            thumbnailPublicId: thumbnail.public_id,
             duration: video.duration,
-            view: 0,
             owner
         });
 
         if (!publishedVideo) {
-            throw new ApiErrors(500, "Failed to upload.");
+            throw new ApiError(500, "Failed to upload.");
         }
 
         return res
@@ -59,7 +54,6 @@ const publishVideo = asyncHandler(async (req, res) => {
                 )
             );
     } catch (error) {
-        console.error("Error Occurred in publishing the video :: ", error);
         return res
             .status(error.statusCode || 500)
             .json(
@@ -67,7 +61,7 @@ const publishVideo = asyncHandler(async (req, res) => {
                     null,
                     error.statusCode || 500,
                     error.message ||
-                        "Something went wrong in publishing the video"
+                    "Something went wrong in publishing the video"
                 )
             );
     }
@@ -78,13 +72,13 @@ const getChannelVideos = asyncHandler(async (req, res) => {
         const { username } = req.params;
 
         if (!username) {
-            throw new ApiErrors(400, "Username missing...");
+            throw new ApiError(400, "Username missing...");
         }
 
         const user = await User.findOne({ username });
 
         if (!user) {
-            throw new ApiErrors(404, "No User Found.");
+            throw new ApiError(404, "No User Found.");
         }
 
         const findChannelVideos = await Video.aggregate([
@@ -105,10 +99,6 @@ const getChannelVideos = asyncHandler(async (req, res) => {
                 )
             );
     } catch (error) {
-        console.error(
-            "Error Occurred in Fetching the channel videos :: ",
-            error
-        );
         return res
             .status(error.statusCode || 500)
             .json(
@@ -116,7 +106,7 @@ const getChannelVideos = asyncHandler(async (req, res) => {
                     null,
                     error.statusCode || 500,
                     error.message ||
-                        "Something went wrong in Fetching the user videos"
+                    "Something went wrong in Fetching the user videos"
                 )
             );
     }
@@ -124,18 +114,18 @@ const getChannelVideos = asyncHandler(async (req, res) => {
 
 const getVideo = asyncHandler(async (req, res) => {
     try {
-        const { video_id } = req.params;
-        if (!video_id) {
-            throw new ApiErrors(404, "Video Id missing...");
+        const { videoId } = req.params;
+        if (!videoId) {
+            throw new ApiError(404, "Video Id missing...");
         }
 
-        const videoId = new mongoose.Types.ObjectId(video_id);
+        const videoObjectId = new mongoose.Types.ObjectId(videoId);
 
         const video = await Video.aggregate(
             [
                 {
                     $match: {
-                        _id: videoId
+                        _id: videoObjectId
                     }
                 },
                 {
@@ -245,14 +235,13 @@ const getVideo = asyncHandler(async (req, res) => {
         );
 
         if (!video?.length) {
-            throw new ApiErrors(400, "Error in Getting Video.");
+            throw new ApiError(400, "Error in Getting Video.");
         }
 
         return res
             .status(200)
             .json(new ApiResponse(video[0], 200, "got Video Successfully"));
     } catch (error) {
-        console.error("Error in Getting the video :: ", error);
         return res
             .status(error.statusCode || 500)
             .json(
@@ -308,7 +297,6 @@ const getAllVideos = asyncHandler(async (req, res) => {
                 new ApiResponse(videos, 200, "All videos fetched successfully!")
             );
     } catch (error) {
-        console.error("Error fetching all videos:", error);
         return res
             .status(error.statusCode || 500)
             .json(
@@ -324,7 +312,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
 const updateViewCount = asyncHandler(async (req, res) => {
     try {
         const { video_id } = req.params;
-        if (!video_id) throw new ApiErrors(404, "Video not found.");
+        if (!video_id) throw new ApiError(404, "Video not found.");
 
         const videoId = new mongoose.Types.ObjectId(video_id);
 
@@ -335,14 +323,13 @@ const updateViewCount = asyncHandler(async (req, res) => {
         );
 
         if (!video) {
-            throw new ApiErrors(404, "Video not found.");
+            throw new ApiError(404, "Video not found.");
         }
 
         return res
             .status(200)
             .json(new ApiResponse(video, 200, "View count updated!"));
     } catch (error) {
-        console.error("Error updating view count:", error);
         return res
             .status(error.statusCode || 500)
             .json(
@@ -361,14 +348,14 @@ const updateVideo = asyncHandler(async (req, res) => {
         //check for if the video exists;
         const video = await Video.findById(videoId);
         if (!video) {
-            throw new ApiErrors(404, "Video not found.");
+            throw new ApiError(404, "Video not found.");
         }
 
         const { title, description, thumbnail } = req.body;
 
-        video.title = title;
-        video.description = description;
-        video.thumbnail = thumbnail;
+        if (title) video.title = title;
+        if (description) video.description = description;
+        if (thumbnail) video.thumbnail = thumbnail;
 
         await video.save();
 
@@ -376,7 +363,6 @@ const updateVideo = asyncHandler(async (req, res) => {
             .status(200)
             .json(new ApiResponse(video, 200, "Video updated successfully!"));
     } catch (error) {
-        console.error("Error updating video:", error);
         return res
             .status(error.statusCode || 500)
             .json(
@@ -393,16 +379,15 @@ const deleteVideo = asyncHandler(async (req, res) => {
     try {
         const { videoId } = req.params;
 
-        if (!videoId) throw new ApiErrors(404, "Video Id missing...");
+        if (!videoId) throw new ApiError(404, "Video Id missing...");
 
         const video = await Video.findByIdAndDelete(videoId);
-        if (!video) throw new ApiErrors(404, "Video not found.");
+        if (!video) throw new ApiError(404, "Video not found.");
 
         return res
             .status(200)
             .json(new ApiResponse(video, 200, "Video deleted successfully!"));
     } catch (error) {
-        console.error("Error deleting video:", error);
         return res
             .status(error.statusCode || 500)
             .json(

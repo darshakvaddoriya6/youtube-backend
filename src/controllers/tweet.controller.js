@@ -1,15 +1,15 @@
 import { Tweet } from "../models/tweet.model.js";
-import { ApiErrors } from "../utils/ApiError.js";
+import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const createTweet = asyncHandler(async (req, res) => {
     try {
-        const { content } = req.body;
-        const userId = req.user._id;
+        const { content } = req.body
+        const userId = req?.user._id;
 
         if (!content?.trim()) {
-            throw new ApiErrors(400, "Content is required");
+            throw new ApiError(400, "Content is required");
         }
 
         const newTweet = await Tweet.create({
@@ -18,7 +18,7 @@ const createTweet = asyncHandler(async (req, res) => {
         });
 
         if (!newTweet) {
-            throw new ApiErrors(500, "Failed to create tweet");
+            throw new ApiError(500, "Failed to create tweet");
         }
 
         await newTweet.populate("channel", "username avatar fullName");
@@ -29,7 +29,6 @@ const createTweet = asyncHandler(async (req, res) => {
                 new ApiResponse(newTweet, 201, "Tweet created successfully.")
             );
     } catch (error) {
-        console.error("Error occurred while creating tweet:", error);
         return res
             .status(500)
             .json(
@@ -46,8 +45,8 @@ const updateTweet = asyncHandler(async (req, res) => {
     try {
         const { tweetId } = req.params;
         const { content } = req.body;
-        if (!tweetId) throw new ApiErrors(400, "Tweet ID is required");
-        if (!content?.trim()) throw new ApiErrors(400, "Content is required");
+        if (!tweetId) throw new ApiError(400, "Tweet ID is required");
+        if (!content?.trim()) throw new ApiError(400, "Content is required");
 
         const updateTweet = await Tweet.findByIdAndUpdate(
             { _id: tweetId },
@@ -55,7 +54,7 @@ const updateTweet = asyncHandler(async (req, res) => {
             { new: true }
         );
 
-        if (!updateTweet) throw new ApiErrors(404, "Tweet not found");
+        if (!updateTweet) throw new ApiError(404, "Tweet not found");
         await updateTweet.populate("channel", "username avatar fullName");
 
         return res
@@ -64,7 +63,6 @@ const updateTweet = asyncHandler(async (req, res) => {
                 new ApiResponse(updateTweet, 200, "Tweet updated successfully.")
             );
     } catch (error) {
-        console.error("Error occurred while updating tweet:", error);
         return res
             .status(error.statusCode || 500)
             .json(
@@ -81,13 +79,13 @@ const deleteTweet = asyncHandler(async (req, res) => {
     try {
         const { tweetId } = req.params;
         if (!tweetId) {
-            throw new ApiErrors(400, "Tweet ID is required");
+            throw new ApiError(400, "Tweet ID is required");
         }
 
         const deleteTweet = await Tweet.findByIdAndDelete(tweetId);
 
         if (!deleteTweet) {
-            throw new ApiErrors(404, "Tweet not found");
+            throw new ApiError(404, "Tweet not found");
         }
 
         return res
@@ -96,7 +94,6 @@ const deleteTweet = asyncHandler(async (req, res) => {
                 new ApiResponse(deleteTweet, 200, "Tweet deleted successfully.")
             );
     } catch (error) {
-        console.error("Error occurred while deleting tweet:", error);
         return res
             .status(error.statusCode || 500)
             .json(
@@ -114,7 +111,7 @@ const getUserTweets = asyncHandler(async (req, res) => {
         const { userId } = req.params;
 
         if (!userId) {
-            throw new ApiErrors(400, "User ID is required");
+            throw new ApiError(400, "User ID is required");
         }
 
         const tweets = await Tweet.find({ channel: userId }).populate(
@@ -132,7 +129,6 @@ const getUserTweets = asyncHandler(async (req, res) => {
                 )
             );
     } catch (error) {
-        console.error("Error occurred while retrieving user tweets:", error);
         return res
             .status(error.statusCode || 500)
             .json(

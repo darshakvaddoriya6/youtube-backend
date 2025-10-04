@@ -1,14 +1,18 @@
 import mongoose, { Schema } from "mongoose";
 
-const tweetSchema = new Schema({
-    content: {
-        type: String,
-        reqired: true
+const tweetSchema = new Schema(
+    {
+        content: {
+            type: String,
+            required: true
+        },
+        channel: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+            required: true
+        }
     },
-    owner: {
-        type: Schema.Types.ObjectId,
-        ref: "User"
-    },
-}, { timestamps: true })
+    { timestamps: true }
+);
 
-export const Tweet = mongoose.model("Tweet", tweetSchema)
+export const Tweet = mongoose.model("Tweet", tweetSchema);

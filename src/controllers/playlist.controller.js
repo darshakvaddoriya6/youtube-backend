@@ -1,17 +1,17 @@
-import { PlayList } from "../models/playlist.model.js";
-import { ApiErrors } from "../utils/ApiError.js";
+import { Playlist } from "../models/playlist.model.js";
+import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const createPlaylist = asyncHandler(async (req, res) => {
     try {
         const { name, description } = req.body;
-        const user = req.user._id;
+        const user = req?.user._id;
 
         if (!name?.trim())
-            throw new ApiErrors(400, "Playlist name is required");
+            throw new ApiError(400, "Playlist name is required");
 
-        const createdPlaylist = await PlayList.create({
+        const createdPlaylist = await Playlist.create({
             name,
             description,
             videos: [],
@@ -42,11 +42,11 @@ const createPlaylist = asyncHandler(async (req, res) => {
 
 const getUserPlaylists = asyncHandler(async (req, res) => {
     try {
-        const { userID } = req.params;
+        const { userId } = req.params;
 
-        if (!userID) throw new ApiErrors(400, "User ID is required");
+        if (!userId) throw new ApiError(400, "User ID is required");
 
-        const userPlaylists = await PlayList.find({ owner: userID }).populate(
+        const userPlaylists = await Playlist.find({ owner: userId }).populate(
             "videos"
         );
 
@@ -70,9 +70,9 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
 const getPlaylistById = asyncHandler(async (req, res) => {
     try {
         const { playlistId } = req.params;
-        if (!playlistId) throw new ApiErrors(400, "Playlist ID is required");
+        if (!playlistId) throw new ApiError(400, "Playlist ID is required");
 
-        const playlist = await PlayList.findById(playlistId).populate([
+        const playlist = await Playlist.findById(playlistId).populate([
             {
                 path: "videos",
                 select: "title _id duration thumbnail view owner"
@@ -80,14 +80,14 @@ const getPlaylistById = asyncHandler(async (req, res) => {
             { path: "owner", select: "username avatar fullName" }
         ]);
 
-        if (!playlist) throw new ApiErrors(404, "Playlist not found");
+        if (!playlist) throw new ApiError(404, "Playlist not found");
 
         const finalPlaylist = await playlist?.populate({
             path: "videos.owner",
             select: "username avatar fullName"
         });
 
-        if (!finalPlaylist) throw new ApiErrors(404, "Playlist not found");
+        if (!finalPlaylist) throw new ApiError(404, "Playlist not found");
 
         return res
             .status(200)
@@ -110,13 +110,13 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
         const { playlistId, videoId } = req.params;
 
         if (!playlistId || !videoId)
-            throw new ApiErrors(400, "Playlist ID and Video ID are required");
+            throw new ApiError(400, "Playlist ID and Video ID are required");
 
-        const playlist = await PlayList.findById(playlistId);
-        if (!playlist) throw new ApiErrors(404, "Playlist not found");
+        const playlist = await Playlist.findById(playlistId);
+        if (!playlist) throw new ApiError(404, "Playlist not found");
 
         if (playlist.videos.includes(videoId)) {
-            throw new ApiErrors(400, "Video already in playlist");
+            throw new ApiError(400, "Video already in playlist");
         }
 
         playlist.videos.push(videoId);
@@ -144,13 +144,13 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
         const { playlistId, videoId } = req.params;
 
         if (!playlistId || !videoId)
-            throw new ApiErrors(400, "Playlist ID and Video ID are required");
+            throw new ApiError(400, "Playlist ID and Video ID are required");
 
-        const playlist = await PlayList.findById(playlistId);
-        if (!playlist) throw new ApiErrors(404, "Playlist not found");
+        const playlist = await Playlist.findById(playlistId);
+        if (!playlist) throw new ApiError(404, "Playlist not found");
 
         if (!playlist.videos.includes(videoId)) {
-            throw new ApiErrors(400, "Video not found in playlist");
+            throw new ApiError(400, "Video not found in playlist");
         }
 
         playlist.videos.pull(videoId);
@@ -178,18 +178,18 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
 const deletePlaylist = asyncHandler(async (req, res) => {
     try {
         const { playlistId } = req.params;
-        if (!playlistId) throw new ApiErrors(400, "Playlist ID is required");
+        if (!playlistId) throw new ApiError(400, "Playlist ID is required");
 
-        const deletePlaylist = await PlayList.findByIdAndDelete(playlistId);
+        const deletePlaylist = await Playlist.findByIdAndDelete(playlistId);
 
-        if (!deletePlaylist) throw new ApiErrors(404, "Playlist not found");
+        if (!deletePlaylist) throw new ApiError(404, "Playlist not found");
 
         return res
-            .status(204)
+            .status(200)
             .json(
                 new ApiResponse(
                     deletePlaylist,
-                    203,
+                    200,
                     "Playlist deleted successfully."
                 )
             );
@@ -212,7 +212,7 @@ const updatePlaylist = asyncHandler(async (req, res) => {
         const { name, description } = req.body;
 
 
-        if (!playlistId) throw new ApiErrors(400, "Playlist ID is required");
+        if (!playlistId) throw new ApiError(400, "Playlist ID is required");
 
         const updateFields = {};
         if (name !== undefined) updateFields.name = name?.trim() || "";
@@ -220,19 +220,19 @@ const updatePlaylist = asyncHandler(async (req, res) => {
             updateFields.description = description?.trim() || "";
 
         if (Object.keys(updateFields).length === 0) {
-            throw new ApiErrors(
+            throw new ApiError(
                 400,
                 "At least one field (name or description) must be provided"
             );
         }
 
-        const updatedPlaylist = await PlayList.findByIdAndUpdate(
+        const updatedPlaylist = await Playlist.findByIdAndUpdate(
             playlistId,
             updateFields,
             { new: true }
         );
 
-        if (!updatedPlaylist) throw new ApiErrors(404, "Playlist not found");
+        if (!updatedPlaylist) throw new ApiError(404, "Playlist not found");
 
         return res
             .status(200)

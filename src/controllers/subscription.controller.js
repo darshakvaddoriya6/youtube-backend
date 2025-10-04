@@ -1,13 +1,13 @@
 import mongoose from "mongoose";
 import { Subscription } from "../models/subscription.model.js";
-import { ApiErrors } from "../utils/ApiError.js";
+import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const toggleSubscription = asyncHandler(async (req, res) => {
     try {
         const { channelId } = req.params;
-        const subscriber = req.user._id;
+        const subscriber = req?.user._id;
 
         const existingSubscription = await Subscription.findOne({
             subscriber,
@@ -26,9 +26,12 @@ const toggleSubscription = asyncHandler(async (req, res) => {
         } else {
             // If subscription does not exist, create it (subscribe)
             const newSubscription = await Subscription.create({
-                subscriber,
-                channel: channelId
+                channel: channelId,
+                subscriber
             });
+            if (!newSubscription) {
+                throw new ApiError(500, "Failed to create subscription");
+            }
             return res
                 .status(201)
                 .json(
@@ -40,7 +43,6 @@ const toggleSubscription = asyncHandler(async (req, res) => {
                 );
         }
     } catch (error) {
-        console.error("Error occurred while toggling subscription:", error);
         return res
             .status(500)
             .json(
@@ -129,10 +131,6 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
                 )
             );
     } catch (error) {
-        console.error(
-            "Error occurred while fetching subscribed channels:",
-            error.message
-        );
         return res
             .status(error.statusCode || 500)
             .json(

@@ -7,14 +7,138 @@ import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 
 const getChannelStats = asyncHandler(async (req, res) => {
-    // TODO: Get the channel stats like total video views, total subscribers, total videos, total likes etc.
+    try {
+        const channelId = req?.user?._id;
+
+        if (!channelId) {
+            throw new ApiError(400, "Channel ID is required");
+        }
+
+        // Get total videos count
+        const totalVideos = await Video.countDocuments({ owner: channelId });
+
+        // Get total views across all videos
+        const viewsResult = await Video.aggregate([
+            {
+                $match: {
+                    owner: new mongoose.Types.ObjectId(channelId)
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalViews: { $sum: "$views" }
+                }
+            }
+        ]);
+        const totalViews = viewsResult.length > 0 ? viewsResult[0].totalViews : 0;
+
+        // Get total subscribers
+        const totalSubscribers = await Subscription.countDocuments({ channel: channelId });
+
+        // Get total likes across all videos
+        const totalLikes = await Like.countDocuments({
+            video: { $in: await Video.find({ owner: channelId }).distinct("_id") }
+        });
+
+        const stats = {
+            totalVideos,
+            totalViews,
+            totalSubscribers,
+            totalLikes
+        };
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    stats,
+                    200,
+                    "Channel stats fetched successfully"
+                )
+            );
+    } catch (error) {
+        return res
+            .status(error.statusCode || 500)
+            .json(
+                new ApiResponse(
+                    null,
+                    error.statusCode || 500,
+                    error.message || "Something went wrong in fetching channel stats"
+                )
+            );
+    }
 })
 
 const getChannelVideos = asyncHandler(async (req, res) => {
-    // TODO: Get all the videos uploaded by the channel
+    try {
+        const channelId = req?.user?._id;
+
+        if (!channelId) {
+            throw new ApiError(400, "Channel ID is required");
+        }
+
+        const videos = await Video.aggregate([
+            {
+                $match: {
+                    owner: new mongoose.Types.ObjectId(channelId)
+                }
+            },
+            {
+                $lookup: {
+                    from: "likes",
+                    localField: "_id",
+                    foreignField: "video",
+                    as: "likes"
+                }
+            },
+            {
+                $addFields: {
+                    likesCount: { $size: "$likes" }
+                }
+            },
+            {
+                $project: {
+                    title: 1,
+                    description: 1,
+                    videoFile: 1,
+                    thumbnail: 1,
+                    duration: 1,
+                    views: 1,
+                    isPublished: 1,
+                    likesCount: 1,
+                    createdAt: 1,
+                    updatedAt: 1
+                }
+            },
+            {
+                $sort: { createdAt: -1 }
+            }
+        ]);
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    videos,
+                    200,
+                    "Channel videos fetched successfully"
+                )
+            );
+    } catch (error) {
+        return res
+            .status(error.statusCode || 500)
+            .json(
+                new ApiResponse(
+                    null,
+                    error.statusCode || 500,
+                    error.message || "Something went wrong in fetching channel videos"
+                )
+            );
+    }
 })
 
 export {
-    getChannelStats, 
+    getChannelStats,
     getChannelVideos
-    }
+}

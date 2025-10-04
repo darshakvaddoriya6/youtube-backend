@@ -1,28 +1,148 @@
-import mongoose, {isValidObjectId} from "mongoose"
-import {User} from "../models/user.model.js"
-import { Subscription } from "../models/subscription.model.js"
-import {ApiError} from "../utils/ApiError.js"
-import {ApiResponse} from "../utils/ApiResponse.js"
-import {asyncHandler} from "../utils/asyncHandler.js"
-
+import mongoose from "mongoose";
+import { Subscription } from "../models/subscription.model.js";
+import { ApiErrors } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 const toggleSubscription = asyncHandler(async (req, res) => {
-    const {channelId} = req.params
-    // TODO: toggle subscription
-})
+    try {
+        const { channelId } = req.params;
+        const subscriber = req.user._id;
 
-// controller to return subscriber list of a channel
+        const existingSubscription = await Subscription.findOne({
+            subscriber,
+            channel: channelId
+        });
+
+        if (existingSubscription) {
+            // If subscription exists, delete it (unsubscribe)
+            await Subscription.findOneAndDelete({
+                subscriber,
+                channel: channelId
+            });
+            return res
+                .status(200)
+                .json(new ApiResponse(null, 200, "Unsubscribed Successfully"));
+        } else {
+            // If subscription does not exist, create it (subscribe)
+            const newSubscription = await Subscription.create({
+                subscriber,
+                channel: channelId
+            });
+            return res
+                .status(201)
+                .json(
+                    new ApiResponse(
+                        newSubscription,
+                        201,
+                        "Subscribed Successfully"
+                    )
+                );
+        }
+    } catch (error) {
+        console.error("Error occurred while toggling subscription:", error);
+        return res
+            .status(500)
+            .json(
+                new ApiResponse(
+                    null,
+                    500,
+                    error.message || "Something went wrong."
+                )
+            );
+    }
+});
+
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
-    const {channelId} = req.params
-})
+    try {
+        const { channelId } = req.params;
 
-// controller to return channel list to which user has subscribed
+        const channelSubscribers = await Subscription.find({
+            channel: channelId
+        }).populate("subscriber", "username avatar fullName");
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    channelSubscribers,
+                    200,
+                    "Channel Subscribers fetched successfully."
+                )
+            );
+    } catch (error) {
+        return res
+            .status(error.statusCode || 500)
+            .json(
+                new ApiResponse(
+                    null,
+                    error.statusCode || 500,
+                    error.message || "Something went wrong."
+                )
+            );
+    }
+});
+
 const getSubscribedChannels = asyncHandler(async (req, res) => {
-    const { subscriberId } = req.params
-})
+    try {
+        const { subscriberId } = req.params;
 
-export {
-    toggleSubscription,
-    getUserChannelSubscribers,
-    getSubscribedChannels
-}
+        const subscribedChannels = await Subscription.aggregate([
+            {
+                $match: {
+                    subscriber: new mongoose.Types.ObjectId(subscriberId)
+                }
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "channel",
+                    foreignField: "_id",
+                    as: "channel"
+                }
+            },
+            {
+                $unwind: "$channel"
+            },
+            {
+                $lookup: {
+                    from: "subscriptions",
+                    localField: "channel._id",
+                    foreignField: "channel",
+                    as: "totalSubscribers"
+                }
+            },
+            {
+                $addFields: {
+                    totalSubscribersCount: { $size: "$totalSubscribers" }
+                }
+            }
+        ]);
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    subscribedChannels,
+                    200,
+                    "Subscribed Channels fetched successfully."
+                )
+            );
+    } catch (error) {
+        console.error(
+            "Error occurred while fetching subscribed channels:",
+            error.message
+        );
+        return res
+            .status(error.statusCode || 500)
+            .json(
+                new ApiResponse(
+                    null,
+                    error.statusCode || 500,
+                    error.message || "Something went wrong."
+                )
+            );
+    }
+});
+
+export { toggleSubscription, getUserChannelSubscribers, getSubscribedChannels };

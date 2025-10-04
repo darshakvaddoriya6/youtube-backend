@@ -15,13 +15,21 @@ const videoSchema = new Schema(
             type: String , 
             required : true,
         },
-        discription: {
+        description: {
             type: String ,
             required : true,
         },
         duration: {
-            type: String , 
+            type: Number , 
             required : true,
+        },
+        videoFilePublicId: {
+            type: String,
+            required: true,
+        },
+        thumbnailPublicId: {
+            type: String,
+            required: true,
         },
         views: {
             type: Number,
@@ -33,7 +41,7 @@ const videoSchema = new Schema(
             default: true,
         },
         owner: {
-            type: Schema.Types  .ObjectId,
+            type: Schema.Types.ObjectId,
             ref: "User"
         }
 
@@ -42,6 +50,16 @@ const videoSchema = new Schema(
         timestamps: true
     }
 )
+
+// Instance methods
+videoSchema.methods.incrementViews = async function () {
+    this.views += 1
+    await this.save()
+}
+
+videoSchema.methods.validateUser = function (userId) {
+    return this.owner && this.owner.toString() === userId.toString()
+}
 
 videoSchema.plugin(mongooseAggregatePaginate)
 

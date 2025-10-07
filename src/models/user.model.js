@@ -1,12 +1,12 @@
 import mongoose, { Schema } from "mongoose";
 import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
+import { timezoneTransform } from "../helpers/timezoneTransform.js"
 
 const userSchema = new Schema(
     {
         username: {
             type: String,
-            required: true,
             unique: true,
             lowercase: true,
             trim: true,
@@ -90,5 +90,9 @@ userSchema.methods.genrateRefreshToken = function () {
         }
     )
  }
+
+userSchema.set("toJSON", {
+  transform: timezoneTransform,
+});
 
 export const User = mongoose.model("User", userSchema)

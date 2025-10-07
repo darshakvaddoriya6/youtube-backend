@@ -1,11 +1,11 @@
 import mongoose, { Schema } from "mongoose";
 import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
+import { timezoneTransform } from "../helpers/timezoneTransform.js";
 
 const commentSchema = new Schema(
     {
         content: {
             type: String,
-            required: true
         },
         video: {
             type: Schema.Types.ObjectId,
@@ -23,4 +23,8 @@ const commentSchema = new Schema(
 
 commentSchema.plugin(mongooseAggregatePaginate)
 
-export const Comment = mongoose.model("CommetSchema", commentSchema)
+commentSchema.set("toJSON", {
+  transform: timezoneTransform,
+});
+
+export const Comment = mongoose.model("Comment", commentSchema)

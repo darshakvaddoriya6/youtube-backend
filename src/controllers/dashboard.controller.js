@@ -13,11 +13,9 @@ const getChannelStats = asyncHandler(async (req, res) => {
         if (!channelId) {
             throw new ApiError(400, "Channel ID is required");
         }
-
-        // Get total videos count
+    
         const totalVideos = await Video.countDocuments({ owner: channelId });
 
-        // Get total views across all videos
         const viewsResult = await Video.aggregate([
             {
                 $match: {
@@ -33,10 +31,8 @@ const getChannelStats = asyncHandler(async (req, res) => {
         ]);
         const totalViews = viewsResult.length > 0 ? viewsResult[0].totalViews : 0;
 
-        // Get total subscribers
         const totalSubscribers = await Subscription.countDocuments({ channel: channelId });
 
-        // Get total likes across all videos
         const totalLikes = await Like.countDocuments({
             video: { $in: await Video.find({ owner: channelId }).distinct("_id") }
         });

@@ -5,8 +5,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
     try {
-        const { videoId } = req.params;
-        const { videoOwnerId } = req.params;
+        const { videoId ,videoOwnerId } = req.params;
         const user = req.user._id;
         if (!videoId) throw new ApiError(400, "Video ID is required");
 

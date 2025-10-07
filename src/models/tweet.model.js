@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import { timezoneTransform } from "../helpers/timezoneTransform.js";
 
 const tweetSchema = new Schema(
     {
@@ -14,5 +15,9 @@ const tweetSchema = new Schema(
     },
     { timestamps: true }
 );
+
+tweetSchema.set("toJSON", {
+  transform: timezoneTransform,
+});
 
 export const Tweet = mongoose.model("Tweet", tweetSchema);

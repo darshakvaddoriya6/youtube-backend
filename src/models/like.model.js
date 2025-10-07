@@ -1,4 +1,5 @@
 import { model, Schema, Types } from "mongoose";
+import { timezoneTransform } from "../helpers/timezoneTransform.js";
 
 const likeSchema = new Schema(
     {
@@ -28,5 +29,10 @@ const likeSchema = new Schema(
         timestamps: true
     }
 );
+
+
+likeSchema.set("toJSON", {
+  transform: timezoneTransform,
+});
 
 export const Like = model("Like", likeSchema);

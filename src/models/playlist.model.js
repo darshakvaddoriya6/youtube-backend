@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import { timezoneTransform } from "../helpers/timezoneTransform.js";
 
 const playlistSchema = new Schema({
     name: {
@@ -20,5 +21,9 @@ const playlistSchema = new Schema({
         ref: "User"
     },
 }, { timestamps: true })
+
+playlistSchema.set("toJSON", {
+  transform: timezoneTransform,
+});
 
 export const Playlist = mongoose.model("Playlist", playlistSchema)

@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import { timezoneTransform } from "../helpers/timezoneTransform.js";
 
 const subscriptionSchema = new Schema({
     subscriber: {
@@ -10,5 +11,9 @@ const subscriptionSchema = new Schema({
         ref: "User"
     }
 }, { timestamps: true })
+
+subscriptionSchema.set("toJSON", {
+  transform: timezoneTransform,
+});
 
 export const Subscription = mongoose.model("Subscription", subscriptionSchema)

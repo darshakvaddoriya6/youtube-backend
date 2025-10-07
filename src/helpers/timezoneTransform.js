@@ -10,12 +10,12 @@ export const timezoneTransform = function (doc, ret) {
   if (ret.createdAt) {
     ret.createdAt = moment(ret.createdAt)
       .tz("Asia/Kolkata")
-      .format("YYYY-MM-DD HH:mm:ss");
+      .format("HH:mm:ss A | DD-MM-YYYY ");
   }
   if (ret.updatedAt) {
     ret.updatedAt = moment(ret.updatedAt)
       .tz("Asia/Kolkata")
-      .format("YYYY-MM-DD HH:mm:ss");
+      .format("HH:mm:ss A | DD-MM-YYYY");
   }
   return ret;
 };

@@ -68,7 +68,9 @@ const getChannelStats = asyncHandler(async (req, res) => {
 
 const getChannelVideos = asyncHandler(async (req, res) => {
     try {
-        const channelId = req?.user?._id;
+        // Get userId from query params (for viewing other users' channels)
+        // or use authenticated user (for dashboard/stats)
+        const channelId = req.query.userId || req?.user?._id;
 
         if (!channelId) {
             throw new ApiError(400, "Channel ID is required");

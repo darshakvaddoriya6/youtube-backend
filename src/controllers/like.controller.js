@@ -5,14 +5,18 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
     try {
-        const { videoId ,videoOwnerId } = req.params;
+        const { videoId } = req.params;
         const user = req.user._id;
         if (!videoId) throw new ApiError(400, "Video ID is required");
 
+        // First, get the video to find its owner
+        const { Video } = await import("../models/video.model.js");
+        const video = await Video.findById(videoId);
+        if (!video) throw new ApiError(404, "Video not found");
+
         const existingLike = await Like.findOne({
             video: videoId,
-            likedBy: user,
-            owner: videoOwnerId
+            likedBy: user
         });
 
         if (existingLike) {
@@ -23,7 +27,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
         }
 
         const createVideoLike = await Like.create({
-            owner: videoOwnerId,
+            owner: video.owner,
             likedBy: user,
             video: videoId
         });
@@ -59,7 +63,7 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
 
         if (!tweetId) throw new ApiError(400, "Tweet ID is required");
 
-       
+
         const existingLike = await Like.findOne({
             tweets: tweetId,
             likedBy: user,
@@ -188,7 +192,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
                     null,
                     error.statusCode || 500,
                     error.message ||
-                        "Something went wrong in getting liked videos"
+                    "Something went wrong in getting liked videos"
                 )
             );
     }

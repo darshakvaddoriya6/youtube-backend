@@ -1,6 +1,9 @@
 import { Router } from "express";
 import {
+    addToWatchHistory,
     changeCurrentPassword,
+    deleteSingleWatchHistory,
+    clearAllWatchHistory,
     getCurrentUser,
     getUserChannelProfile,
     getWatchHistory,
@@ -45,5 +48,10 @@ router.route("/avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvat
 router.route("/cover-image").patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage)
 router.route("/c/:username").get(verifyJWT, getUserChannelProfile)
 router.route("/history").get(verifyJWT, getWatchHistory)
+router.route("/history/add").post(verifyJWT, addToWatchHistory);
+router.route("/history/delete/:historyId").delete(verifyJWT, deleteSingleWatchHistory);
+router.route("/history/watch-history/clear").delete(verifyJWT, clearAllWatchHistory);
+
+
 
 export default router

@@ -384,53 +384,111 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 
 const getWatchHistory = asyncHandler(async (req, res) => {
     const user = await User.aggregate([
-        {
-            $match: {
-                _id: new mongoose.Types.ObjectId(req.user._id)
-            }
-        },
+        { $match: { _id: new mongoose.Types.ObjectId(req.user._id) } },
+        { $unwind: "$watchHistory" }, // flatten each watch entry
         {
             $lookup: {
                 from: "videos",
-                localField: "watchHistory",
+                localField: "watchHistory.video",
                 foreignField: "_id",
-                as: "watchHistory",
+                as: "videoDetails",
                 pipeline: [
                     {
                         $lookup: {
-                            from: "userd",
+                            from: "users",
                             localField: "owner",
                             foreignField: "_id",
                             as: "owner",
-                            pipeline: [
-                                {
-                                    $project: {
-                                        fullName: 1,
-                                        username: 1,
-                                        avatar: 1
-                                    }
-                                }
-                            ]
-                        }
+                            pipeline: [{ $project: { fullName: 1, username: 1, avatar: 1 } }],
+                        },
                     },
-                    {
-                        $addFields: {
-                            owner: {
-                                $first: "$owner"
-                            }
-                        }
-                    }
-                ]
-            }
-        }
-    ])
+                    { $addFields: { owner: { $first: "$owner" } } },
+                ],
+            },
+        },
+        { $addFields: { video: { $first: "$videoDetails" } } },
+        {
+            $project: {
+                _id: "$watchHistory._id",
+                video: 1,
+                watchedAt: "$watchHistory.watchedAt",
+            },
+        },
+        { $sort: { watchedAt: -1 } },
+    ]);
+
+    return res.status(200).json(
+        new ApiResponse(200, { history: user }, "Watch history fetched successfully")
+    );
+});
+
+const addToWatchHistory = asyncHandler(async (req, res) => {
+    const { videoId } = req.body;
+
+    if (!videoId) {
+        throw new ApiError(400, "Video ID is required");
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+        req.user._id,
+        { $push: { watchHistory: { video: videoId, watchedAt: new Date() } } },
+        { new: true } // return updated document
+    ).populate("watchHistory.video");
+
+    const newHistoryItem =
+        updatedUser.watchHistory[updatedUser.watchHistory.length - 1];
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, newHistoryItem, "Video added to watch history"));
+});
+
+const deleteSingleWatchHistory = asyncHandler(async (req, res) => {
+    const { historyId } = req.params; // the _id of the history entry
+
+    if (!historyId || !mongoose.Types.ObjectId.isValid(historyId)) {
+        throw new ApiError(400, "Valid historyId is required");
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+        req.user._id,
+        { $pull: { watchHistory: { _id: historyId } } },
+        { new: true }
+    ).populate("watchHistory.video");
+
+    if (!updatedUser) {
+        throw new ApiError(404, "User not found or history not deleted");
+    }
 
     return res
         .status(200)
         .json(
-            new ApiResponse(200, user[0].getWatchHistory, "Watch history fatched successfully")
-        )
-})
+            new ApiResponse(200, updatedUser.watchHistory, "History item deleted successfully")
+        );
+});
+
+
+const clearAllWatchHistory = asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+
+    const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $set: { watchHistory: [] } }, // clear entire array
+        { new: true }
+    );
+
+    if (!updatedUser) {
+        throw new ApiError(404, "User not found");
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, updatedUser.watchHistory, "All watch history cleared successfully")
+        );
+});
+
+
 
 
 export {
@@ -445,6 +503,8 @@ export {
     updateUserAvatar,
     updateUserCoverImage,
     getUserChannelProfile,
-    getWatchHistory
-
+    getWatchHistory,
+    addToWatchHistory,
+    deleteSingleWatchHistory,
+    clearAllWatchHistory
 }

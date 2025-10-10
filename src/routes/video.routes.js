@@ -10,6 +10,7 @@ import {verifyJWT} from "../middlewares/auth.middleware.js"
 import {upload} from "../middlewares/multer.middlewares.js"
 
 const router = Router();
+router.get("/:videoId", getVideo);
 router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
 
 router
@@ -32,7 +33,6 @@ router
 
 router
     .route("/:videoId")
-    .get(getVideo)
     .delete(deleteVideo)
     .patch(
         upload.fields([

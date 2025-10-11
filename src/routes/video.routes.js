@@ -7,18 +7,21 @@ import {
     searchVideos,
     updateVideo
 } from "../controllers/video.controller.js"
-import {verifyJWT} from "../middlewares/auth.middleware.js"
-import {upload} from "../middlewares/multer.middlewares.js"
+import { verifyJWT } from "../middlewares/auth.middleware.js"
+import { upload } from "../middlewares/multer.middlewares.js"
 
 const router = Router();
 router.get("/search", searchVideos); // Public search endpoint
 router.get("/:videoId", getVideo);
- // Apply verifyJWT middleware to all routes in this file
+// Apply verifyJWT middleware to all routes in this file
 
 router
     .route("/")
-    .get(getAllVideos)
-    .post(verifyJWT,
+    .get(getAllVideos);
+
+router.use(verifyJWT);
+
+router.route('/').post(
         upload.fields([
             {
                 name: "videoFile",
@@ -32,7 +35,6 @@ router
         ]),
         publishVideo
     );
-router.use(verifyJWT);
 router
     .route("/:videoId")
     .delete(deleteVideo)

@@ -1,58 +1,34 @@
-import { Router } from 'express';
+import { Router } from "express";
 import {
-    deleteVideo,
-    getAllVideos,
-    getVideo,
-    publishVideo,
-    searchVideos,
-    updateVideo
-} from "../controllers/video.controller.js"
-import { verifyJWT } from "../middlewares/auth.middleware.js"
-import { upload } from "../middlewares/multer.middlewares.js"
+  deleteVideo,
+  getAllVideos,
+  getVideo,
+  publishVideo,
+  searchVideos,
+  updateVideo,
+} from "../controllers/video.controller.js";
+import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { upload } from "../middlewares/multer.middlewares.js";
 
 const router = Router();
 
-// Public routes (no authentication required)
+// Shared upload config
+const uploadVideoFields = upload.fields([
+  { name: "videoFile", maxCount: 1 },
+  { name: "thumbnail", maxCount: 1 },
+]);
+
+// 🟢 Public Routes
 router.get("/search", searchVideos);
 router.get("/", getAllVideos);
 router.get("/:videoId", getVideo);
 
-// Protected routes (authentication required)
-// Apply JWT middleware to all subsequent routes
+// 🔒 Protected Routes
 router.use(verifyJWT);
-
-// Video upload route
-router.post("/",
-    upload.fields([
-        {
-            name: "videoFile",
-            maxCount: 1,
-        },
-        {
-            name: "thumbnail",
-            maxCount: 1,
-        },
-    ]),
-    publishVideo
-);
-
-// Video management routes
+router.post("/", uploadVideoFields, publishVideo);
 router
-    .route("/:videoId")
-    .delete(deleteVideo)
-    .patch(
-        upload.fields([
-            {
-                name: "videoFile",
-                maxCount: 1,
-            },
-            {
-                name: "thumbnail",
-                maxCount: 1,
-            },
-        ]),
-        updateVideo
-    );
+  .route("/:videoId")
+  .patch(uploadVideoFields, updateVideo)
+  .delete(deleteVideo);
 
-
-export default router
+export default router;

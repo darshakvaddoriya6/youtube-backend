@@ -11,30 +11,32 @@ import { verifyJWT } from "../middlewares/auth.middleware.js"
 import { upload } from "../middlewares/multer.middlewares.js"
 
 const router = Router();
-router.get("/search", searchVideos); // Public search endpoint
+
+// Public routes (no authentication required)
+router.get("/search", searchVideos);
+router.get("/", getAllVideos);
 router.get("/:videoId", getVideo);
-// Apply verifyJWT middleware to all routes in this file
 
-router
-    .route("/")
-    .get(getAllVideos);
-
+// Protected routes (authentication required)
+// Apply JWT middleware to all subsequent routes
 router.use(verifyJWT);
 
-router.route('/').post(
-        upload.fields([
-            {
-                name: "videoFile",
-                maxCount: 1,
-            },
-            {
-                name: "thumbnail",
-                maxCount: 1,
-            },
-            
-        ]),
-        publishVideo
-    );
+// Video upload route
+router.post("/",
+    upload.fields([
+        {
+            name: "videoFile",
+            maxCount: 1,
+        },
+        {
+            name: "thumbnail",
+            maxCount: 1,
+        },
+    ]),
+    publishVideo
+);
+
+// Video management routes
 router
     .route("/:videoId")
     .delete(deleteVideo)

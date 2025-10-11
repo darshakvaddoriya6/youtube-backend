@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import { Comment } from "../models/comment.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -7,21 +6,46 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 const getVideoComments = asyncHandler(async (req, res) => {
     try {
         const { videoId } = req.params;
-        const { page = 1, limit = 10 } = req.query;
+        const currentUserId = req?.user?._id;
 
-        const comments = await Comment.find({ video: videoId }).populate(
-            "owner",
-            "username avatar"
+        const comments = await Comment.find({ video: videoId })
+            .populate("owner", "username avatar fullName")
+            .sort({ createdAt: -1 });
+
+        // Get like information for each comment
+        const { Like } = await import("../models/like.model.js");
+        
+        const commentsWithLikes = await Promise.all(
+            comments.map(async (comment) => {
+                // Get total likes count for this comment
+                const likesCount = await Like.countDocuments({ comment: comment._id });
+                
+                // Check if current user has liked this comment
+                let isLiked = false;
+                if (currentUserId) {
+                    const userLike = await Like.findOne({ 
+                        comment: comment._id, 
+                        likedBy: currentUserId 
+                    });
+                    isLiked = !!userLike;
+                }
+
+                return {
+                    ...comment.toObject(),
+                    likesCount,
+                    isLiked
+                };
+            })
         );
 
-        return res.status(200).json(new ApiResponse(comments, 200, "Success"));
+        return res.status(200).json(new ApiResponse(200, commentsWithLikes, "Success"));
     } catch (error) {
         return res
             .status(500)
             .json(
                 new ApiResponse(
-                    null,
                     500,
+                    null,
                     error.message ||
                         "Something went wrong in getting video comments"
                 )
@@ -35,8 +59,13 @@ const addComment = asyncHandler(async (req, res) => {
         const { content } = req.body;
         const user = req?.user._id;
 
+        console.log('Adding comment:', { videoId, content, userId: user });
+
         if (!content || !videoId)
             throw new ApiError(400, "Content and Video ID are required");
+
+        if (!user)
+            throw new ApiError(401, "User authentication required");
 
         const newComment = await Comment.create({
             owner: user,
@@ -44,20 +73,23 @@ const addComment = asyncHandler(async (req, res) => {
             video: videoId
         });
 
-        await newComment.populate("owner", "username avatar");
+        await newComment.populate("owner", "username avatar fullName");
+
+        console.log('Comment created successfully:', newComment);
 
         return res
             .status(201)
             .json(
-                new ApiResponse(newComment, 201, "Comment added successfully")
+                new ApiResponse(201, newComment, "Comment added successfully")
             );
     } catch (error) {
+        console.error('Error adding comment:', error);
         return res
-            .status(500)
+            .status(error.statusCode || 500)
             .json(
                 new ApiResponse(
-                    null,
                     error.statusCode || 500,
+                    null,
                     error.message || "Something went wrong in adding comment"
                 )
             );
@@ -86,8 +118,8 @@ const updateComment = asyncHandler(async (req, res) => {
             .status(200)
             .json(
                 new ApiResponse(
-                    updatedComment,
                     200,
+                    updatedComment,
                     "Comment updated successfully"
                 )
             );
@@ -96,8 +128,8 @@ const updateComment = asyncHandler(async (req, res) => {
             .status(500)
             .json(
                 new ApiResponse(
-                    null,
                     error.statusCode || 500,
+                    null,
                     error.message || "Something went wrong in updating comment"
                 )
             );
@@ -120,8 +152,8 @@ const deleteComment = asyncHandler(async (req, res) => {
             .status(200)
             .json(
                 new ApiResponse(
-                    deletedComment,
                     200,
+                    deletedComment,
                     "Comment deleted successfully"
                 )
             );
@@ -130,8 +162,8 @@ const deleteComment = asyncHandler(async (req, res) => {
             .status(500)
             .json(
                 new ApiResponse(
-                    null,
                     error.statusCode || 500,
+                    null,
                     error.message || "Something went wrong in deleting comment"
                 )
             );

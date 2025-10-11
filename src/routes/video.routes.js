@@ -4,12 +4,14 @@ import {
     getAllVideos,
     getVideo,
     publishVideo,
+    searchVideos,
     updateVideo
 } from "../controllers/video.controller.js"
 import {verifyJWT} from "../middlewares/auth.middleware.js"
 import {upload} from "../middlewares/multer.middlewares.js"
 
 const router = Router();
+router.get("/search", searchVideos); // Public search endpoint
 router.get("/:videoId", getVideo);
 router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
 

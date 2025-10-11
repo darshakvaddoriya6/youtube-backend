@@ -220,7 +220,7 @@ const getVideo = asyncHandler(async (req, res) => {
                         },
                         duration: 1,
                         title: 1,
-                        view: 1,
+                        views: 1,
                         description: 1,
                         videoFile: 1,
                         thumbnail: 1,
@@ -281,7 +281,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
                     Owner: 1,
                     duration: 1,
                     title: 1,
-                    view: 1,
+                    views: 1,
                     description: 1,
                     videoFile: 1,
                     thumbnail: 1,
@@ -309,6 +309,80 @@ const getAllVideos = asyncHandler(async (req, res) => {
     }
 });
 
+const searchVideos = asyncHandler(async (req, res) => {
+    try {
+        const { query } = req.query;
+        
+        if (!query || query.trim() === '') {
+            throw new ApiError(400, "Search query is required");
+        }
+
+        const searchRegex = new RegExp(query.trim(), 'i'); // Case-insensitive search
+
+        const videos = await Video.aggregate([
+            {
+                $match: {
+                    $or: [
+                        { title: { $regex: searchRegex } },
+                        { description: { $regex: searchRegex } }
+                    ]
+                }
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "owner",
+                    foreignField: "_id",
+                    as: "ownerDetails"
+                }
+            },
+            {
+                $unwind: {
+                    path: "$ownerDetails",
+                    preserveNullAndEmptyArrays: false
+                }
+            },
+            {
+                $addFields: {
+                    Owner: "$ownerDetails"
+                }
+            },
+            {
+                $project: {
+                    Owner: 1,
+                    duration: 1,
+                    title: 1,
+                    views: 1,
+                    description: 1,
+                    videoFile: 1,
+                    thumbnail: 1,
+                    createdAt: 1,
+                    updatedAt: 1
+                }
+            },
+            {
+                $sort: { createdAt: -1 } // Sort by newest first
+            }
+        ]);
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(videos, 200, `Found ${videos.length} videos matching "${query}"`)
+            );
+    } catch (error) {
+        return res
+            .status(error.statusCode || 500)
+            .json(
+                new ApiResponse(
+                    null,
+                    error.statusCode || 500,
+                    error.message || "Error searching videos"
+                )
+            );
+    }
+});
+
 const updateViewCount = asyncHandler(async (req, res) => {
     try {
         const { video_id } = req.params;
@@ -318,7 +392,7 @@ const updateViewCount = asyncHandler(async (req, res) => {
 
         const video = await Video.findByIdAndUpdate(
             videoId,
-            { $inc: { view: 1 } },
+            { $inc: { views: 1 } },
             { new: true }
         );
 
@@ -405,6 +479,7 @@ export {
     getChannelVideos,
     getVideo,
     getAllVideos,
+    searchVideos,
     updateViewCount,
     deleteVideo,
     updateVideo

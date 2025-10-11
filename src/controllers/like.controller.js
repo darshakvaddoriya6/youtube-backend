@@ -167,32 +167,47 @@ const getLikedVideos = asyncHandler(async (req, res) => {
     try {
         const userId = req.user._id;
 
+        // First, let's check if there are any likes at all for this user
+        const allUserLikes = await Like.find({ likedBy: userId });
+
+        // Check specifically for video likes
+        const videoLikes = await Like.find({
+            likedBy: userId,
+            video: { $exists: true, $ne: null }
+        });
+
         const likedVideos = await Like.find({
             likedBy: userId,
             video: {
                 $exists: true,
                 $ne: null
             }
-        }).populate("video");
+        })
+        .populate({
+            path: "video",
+            populate: {
+                path: "owner",
+                select: "username fullName avatar"
+            }
+        })
+        .sort({ createdAt: -1 }); // Sort by newest first
 
-        if (!likedVideos) {
-            throw new ApiError(404, "No liked videos found for this user");
+        
+        // Log the structure of the first liked video if any exist
+        if (likedVideos.length > 0) {
         }
-
-        const reverseLikedVideos = likedVideos.toReversed();
 
         return res
             .status(200)
-            .json(new ApiResponse(reverseLikedVideos, 200, "Success"));
+            .json(new ApiResponse(200, likedVideos, "Liked videos fetched successfully"));
     } catch (error) {
         return res
             .status(500)
             .json(
                 new ApiResponse(
+                    500,
                     null,
-                    error.statusCode || 500,
-                    error.message ||
-                    "Something went wrong in getting liked videos"
+                    error.message || "Something went wrong in getting liked videos"
                 )
             );
     }

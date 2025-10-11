@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
     addComment,
+    addReply,
     deleteComment,
     getVideoComments,
     updateComment,
@@ -13,5 +14,6 @@ router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
 
 router.route("/:videoId").get(getVideoComments).post(addComment);
 router.route("/c/:commentId").delete(deleteComment).patch(updateComment);
+router.route("/c/:commentId/reply").post(addReply);
 
 export default router

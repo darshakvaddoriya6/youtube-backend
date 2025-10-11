@@ -26,14 +26,14 @@ router.get("/", getAllVideos);
 router.route("/:videoId").get(getVideo);
 
 // Apply JWT to all following routes (protected)
-router.use(verifyJWT);
+// router.use(verifyJWT);
 
 // Protected: upload a new video
-router.post("/", videoUploadFields, publishVideo);
+router.post("/",verifyJWT, videoUploadFields, publishVideo);
 
 // Protected: management routes for a video (same path, different methods)
 router.route("/:videoId")
-  .patch(videoUploadFields, updateVideo)
-  .delete(deleteVideo);
+  .patch(verifyJWT,videoUploadFields, updateVideo)
+  .delete(verifyJWT,deleteVideo);
 
 export default router;

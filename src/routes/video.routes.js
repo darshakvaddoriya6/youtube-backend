@@ -13,12 +13,12 @@ import {upload} from "../middlewares/multer.middlewares.js"
 const router = Router();
 router.get("/search", searchVideos); // Public search endpoint
 router.get("/:videoId", getVideo);
-router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
+ // Apply verifyJWT middleware to all routes in this file
 
 router
     .route("/")
     .get(getAllVideos)
-    .post(
+    .post(verifyJWT,
         upload.fields([
             {
                 name: "videoFile",
@@ -32,7 +32,7 @@ router
         ]),
         publishVideo
     );
-
+router.use(verifyJWT);
 router
     .route("/:videoId")
     .delete(deleteVideo)

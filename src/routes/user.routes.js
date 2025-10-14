@@ -13,12 +13,16 @@ import {
     registerUser,
     updateAccountDetails,
     updateUserAvatar,
-    updateUserCoverImage
+    updateUserCoverImage,
+    getWatchLater,
+    toggleWatchLater,
+    clearWatchLater
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middlewares.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router()
+
 
 router.route("/register").post(
     upload.fields([
@@ -47,10 +51,17 @@ router.route("/update-account").patch(verifyJWT, updateAccountDetails)
 router.route("/avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvatar)
 router.route("/cover-image").patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage)
 router.route("/c/:username").get(verifyJWT, getUserChannelProfile)
+
+// history routes
 router.route("/history").get(verifyJWT, getWatchHistory)
 router.route("/history/add").post(verifyJWT, addToWatchHistory);
 router.route("/history/delete/:historyId").delete(verifyJWT, deleteSingleWatchHistory);
 router.route("/history/watch-history/clear").delete(verifyJWT, clearAllWatchHistory);
+
+// Watch Later routes
+router.route("/watch-later").get(verifyJWT, getWatchLater);
+router.route("/watch-later/toggle").post(verifyJWT, toggleWatchLater);
+router.route("/watch-later/clear").delete(verifyJWT, clearWatchLater);
 
 
 

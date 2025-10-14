@@ -488,6 +488,93 @@ const clearAllWatchHistory = asyncHandler(async (req, res) => {
         );
 });
 
+const getWatchLater = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id).populate([
+        {
+            path: "watchLater",
+            select: "title _id duration thumbnail views owner createdAt",
+            populate: {
+                path: "owner",
+                select: "username avatar fullName"
+            }
+        }
+    ]);
+
+    const responseData = {
+        watchLater: user.watchLater || [],
+        ownerId: req.user._id.toString(),
+    };
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, responseData, "Watch Later videos retrieved successfully")
+        );
+});
+
+const toggleWatchLater = asyncHandler(async (req, res) => {
+    const { videoId } = req.body;
+    const userId = req.user._id;
+
+
+    if (!videoId) {
+        console.log("ERROR: VideoId is missing from params");
+        throw new ApiError(400, "Video ID is required");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(videoId)) {
+        console.log("ERROR: VideoId is not a valid ObjectId:", videoId);
+        throw new ApiError(400, "Invalid video ID format");
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    const index = user.watchLater.indexOf(videoId);
+
+    if (index === -1) {
+        // Add video
+        user.watchLater.push(videoId);
+    } else {
+        // Remove video
+        user.watchLater.splice(index, 1);
+    }
+
+    await user.save();
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {  watchLater: user.watchLater},
+                index === -1 ? "Video added to Watch Later successfully" : "Video removed from Watch Later successfully"
+            )
+        );
+});
+
+const clearWatchLater = asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+
+    const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $set: { watchLater: [] } },
+        { new: true }
+    );
+
+    if (!updatedUser) {
+        throw new ApiError(404, "User not found");
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, updatedUser.watchLater, "Watch Later cleared successfully")
+        );
+});
+
 
 
 
@@ -506,5 +593,8 @@ export {
     getWatchHistory,
     addToWatchHistory,
     deleteSingleWatchHistory,
-    clearAllWatchHistory
+    clearAllWatchHistory,
+    getWatchLater,
+    toggleWatchLater,
+    clearWatchLater
 }

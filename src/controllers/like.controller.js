@@ -116,38 +116,56 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
 
         if (!commentId) throw new ApiError(400, "Comment ID is required");
 
+        // Get the comment to find the video ID
+        const { Comment } = await import("../models/comment.model.js");
+        const comment = await Comment.findById(commentId).populate('video', '_id');
+        if (!comment) throw new ApiError(404, "Comment not found");
+
         const existingLike = await Like.findOne({
             comment: commentId,
             likedBy: user,
             owner: commentOwnerId
         });
 
+        let isLiked = false;
+        let likesCount = 0;
+
         if (existingLike) {
             await Like.deleteOne({ _id: existingLike._id });
-            return res
-                .status(200)
-                .json(
-                    new ApiResponse(null, 200, "Comment unliked successfully")
-                );
+            isLiked = false;
+        } else {
+            const createCommentLike = await Like.create({
+                likedBy: user,
+                comment: commentId,
+                owner: commentOwnerId
+            });
+
+            if (!createCommentLike) {
+                throw new ApiError(500, "Failed to create comment like");
+            }
+            isLiked = true;
         }
 
-        const createCommentLike = await Like.create({
-            likedBy: user,
-            comment: commentId,
-            owner: commentOwnerId
-        });
+        // Get updated likes count
+        likesCount = await Like.countDocuments({ comment: commentId });
 
-        if (!createCommentLike) {
-            throw new ApiError(500, "Failed to create comment like");
+        // Emit socket event for real-time updates
+        const io = req.app.get('io');
+        if (io && comment.video) {
+            io.to(`video-${comment.video._id}`).emit('comment-like-updated', {
+                commentId: commentId,
+                likesCount: likesCount,
+                isLiked: isLiked
+            });
         }
 
         return res
-            .status(201)
+            .status(200)
             .json(
                 new ApiResponse(
-                    createCommentLike,
-                    201,
-                    "Comment liked successfully"
+                    { isLiked, likesCount },
+                    200,
+                    isLiked ? "Comment liked successfully" : "Comment unliked successfully"
                 )
             );
     } catch (error) {

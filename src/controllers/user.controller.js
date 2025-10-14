@@ -518,12 +518,10 @@ const toggleWatchLater = asyncHandler(async (req, res) => {
 
 
     if (!videoId) {
-        console.log("ERROR: VideoId is missing from params");
         throw new ApiError(400, "Video ID is required");
     }
 
     if (!mongoose.Types.ObjectId.isValid(videoId)) {
-        console.log("ERROR: VideoId is not a valid ObjectId:", videoId);
         throw new ApiError(400, "Invalid video ID format");
     }
 

@@ -92,7 +92,6 @@ const addComment = asyncHandler(async (req, res) => {
         const { content } = req.body;
         const user = req?.user._id;
 
-        console.log('Adding comment:', { videoId, content, userId: user });
 
         if (!content || !videoId)
             throw new ApiError(400, "Content and Video ID are required");
@@ -108,7 +107,9 @@ const addComment = asyncHandler(async (req, res) => {
 
         await newComment.populate("owner", "username avatar fullName");
 
-        console.log('Comment created successfully:', newComment);
+        // Don't emit socket event here - let the frontend handle it
+        // The frontend will add the comment locally and emit to other users
+
 
         return res
             .status(201)
@@ -135,7 +136,6 @@ const addReply = asyncHandler(async (req, res) => {
         const { content } = req.body;
         const user = req?.user._id;
 
-        console.log('Adding reply:', { commentId, content, userId: user });
 
         if (!content || !commentId)
             throw new ApiError(400, "Content and Comment ID are required");
@@ -165,7 +165,8 @@ const addReply = asyncHandler(async (req, res) => {
             { $push: { replies: newReply._id } }
         );
 
-        console.log('Reply created successfully:', newReply);
+        // Don't emit socket event here - let the frontend handle it
+
 
         return res
             .status(201)
@@ -198,10 +199,19 @@ const updateComment = asyncHandler(async (req, res) => {
             { _id: commentId },
             { content },
             { new: true }
-        );
+        ).populate('video', '_id');
 
         if (!updatedComment) {
             throw new ApiError(404, "Comment not found or not authorized");
+        }
+
+        // Emit socket event for real-time updates
+        const io = req.app.get('io');
+        if (io && updatedComment.video) {
+            io.to(`video-${updatedComment.video._id}`).emit('comment-updated', {
+                commentId: updatedComment._id,
+                content: updatedComment.content
+            });
         }
 
         return res
@@ -231,24 +241,29 @@ const deleteComment = asyncHandler(async (req, res) => {
         const { commentId } = req.params;
         const userId = req?.user?._id;
 
+
         if (!userId) {
             throw new ApiError(401, "User authentication required");
         }
 
         // First find the comment to check ownership
-        const comment = await Comment.findById(commentId);
+        const comment = await Comment.findById(commentId).populate('video', '_id');
+
         if (!comment) {
             throw new ApiError(404, "Comment not found");
         }
+
 
         // Check if the user is the owner of the comment
         if (comment.owner.toString() !== userId.toString()) {
             throw new ApiError(403, "You can only delete your own comments");
         }
 
+        const videoId = comment.video._id;
+
         // If it's a parent comment, also delete all its replies
         if (!comment.parentComment) {
-            await Comment.deleteMany({ parentComment: commentId });
+            const deletedReplies = await Comment.deleteMany({ parentComment: commentId });
         } else {
             // If it's a reply, remove it from parent's replies array
             await Comment.findByIdAndUpdate(
@@ -260,6 +275,15 @@ const deleteComment = asyncHandler(async (req, res) => {
         // Delete the comment
         const deletedComment = await Comment.findByIdAndDelete(commentId);
 
+        // Emit socket event for real-time updates
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`video-${videoId}`).emit('comment-removed', {
+                commentId: commentId
+            });
+        } else {
+        }
+
         return res
             .status(200)
             .json(
@@ -270,6 +294,7 @@ const deleteComment = asyncHandler(async (req, res) => {
                 )
             );
     } catch (error) {
+        console.error('Delete comment error:', error);
         return res
             .status(error.statusCode || 500)
             .json(

@@ -22,7 +22,7 @@ app.use(cors({
         const allowedOrigins = [
             'http://localhost:3000',
             'http://127.0.0.1:3000',
-            // 'https://youtube-frontend-omega.vercel.app',
+            'https://youtube-frontend-omega.vercel.app',
             process.env.FRONTEND_URL // For production
         ];
 

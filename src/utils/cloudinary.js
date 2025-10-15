@@ -11,19 +11,34 @@ const uploadOnCloudinary = async (localFilePath) => {
   try {
     if (!localFilePath) return null;
 
-    // Upload the file to Cloudinary
+    // Upload the file to Cloudinary with optimized settings
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
+      // Video-specific optimizations
+      video_codec: "auto",
+      quality: "auto:good",
+      format: "mp4", // Ensure consistent format
+      // Add transformation for better streaming
+      eager: [
+        { 
+          streaming_profile: "hd",
+          format: "m3u8" // HLS for better streaming
+        }
+      ],
+      // Enable progressive download
+      flags: "progressive"
     });
 
     // Remove the local file after upload
     fs.unlinkSync(localFilePath);
 
-    // ✅ Always return the secure HTTPS URL
+    // ✅ Always return the secure HTTPS URL with optimizations
     return {
       public_id: response.public_id,
       url: response.secure_url, // 👈 use HTTPS version
       resource_type: response.resource_type,
+      // Include streaming URL if available
+      streaming_url: response.eager?.[0]?.secure_url || response.secure_url
     };
   } catch (error) {
     // Remove temp file even if upload fails

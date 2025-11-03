@@ -1,29 +1,36 @@
 import mongoose, { Schema } from "mongoose";
 import { timezoneTransform } from "../helpers/timezoneTransform.js";
 
-const playlistSchema = new Schema({
+const playlistSchema = new Schema(
+  {
     name: {
-        type: String,
-        reqired: true
+      type: String,
+      reqired: true,
     },
     description: {
-        type: String,
-        reqired: true
+      type: String,
+      reqired: true,
+    },
+    thumbnail: {
+      type: String, // cloudinary URL
+      required: true,
     },
     videos: [
-        {
-            type: Schema.Types.ObjectId,
-            ref: "Video"
-        },
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Video",
+      },
     ],
     owner: {
-        type: Schema.Types.ObjectId,
-        ref: "User"
+      type: Schema.Types.ObjectId,
+      ref: "User",
     },
-}, { timestamps: true })
+  },
+  { timestamps: true }
+);
 
 playlistSchema.set("toJSON", {
   transform: timezoneTransform,
 });
 
-export const Playlist = mongoose.model("Playlist", playlistSchema)
+export const Playlist = mongoose.model("Playlist", playlistSchema);

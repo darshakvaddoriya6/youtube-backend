@@ -16,7 +16,8 @@ import {
     updateUserCoverImage,
     getWatchLater,
     toggleWatchLater,
-    clearWatchLater
+    clearWatchLater,
+    deleteUser
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middlewares.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -62,6 +63,9 @@ router.route("/history/watch-history/clear").delete(verifyJWT, clearAllWatchHist
 router.route("/watch-later").get(verifyJWT, getWatchLater);
 router.route("/watch-later/toggle").post(verifyJWT, toggleWatchLater);
 router.route("/watch-later/clear").delete(verifyJWT, clearWatchLater);
+
+// Delete user route
+router.route("/delete-account").delete(verifyJWT, deleteUser);
 
 
 

@@ -76,13 +76,15 @@ const getPlaylistById = asyncHandler(async (req, res) => {
     const { playlistId } = req.params;
     if (!playlistId) throw new ApiError(400, "Playlist ID is required");
 
-    const playlist = await Playlist.findById(playlistId).populate([
-      {
+    const playlist = await Playlist.findById(playlistId)
+      .populate({
         path: "videos",
-        select: "title _id duration thumbnail view owner",
-      },
-      { path: "owner", select: "username avatar fullName" },
-    ]);
+        model: "Video",
+        select:
+          "+description +videoFile +views +likesCount +isPublished +createdAt +updatedAt +duration +thumbnail +title",
+        populate: { path: "owner", select: "username fullName avatar" },
+      })
+
 
     if (!playlist) throw new ApiError(404, "Playlist not found");
 
@@ -124,9 +126,19 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     playlist.videos.push(videoId);
     await playlist.save();
 
+    // ✅ populate videos + their owners + all fields
+    const populatedPlaylist = await Playlist.findById(playlistId)
+      .populate({
+        path: "videos",
+        model: "Video",
+        select:
+          "+description +videoFile +views +likesCount +isPublished +createdAt +updatedAt +duration +thumbnail +title",
+        populate: { path: "owner", select: "username fullName avatar" },
+      })
+
     return res
       .status(200)
-      .json(new ApiResponse(playlist, 200, "Video added to playlist"));
+      .json(new ApiResponse(populatedPlaylist, 200, "Video added to playlist"));
   } catch (error) {
     return res
       .status(error.statusCode || 500)
@@ -159,7 +171,9 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
 
     return res
       .status(200)
-      .json(new ApiResponse(playlist, 200, "Video removed from playlist"));
+      .json(
+        new ApiResponse(playlist, 200, "Video removed from playlist")
+      );
   } catch (error) {
     return res
       .status(error.statusCode || 500)
@@ -168,7 +182,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
           null,
           error.statusCode || 500,
           error.message ||
-            "Something went wrong in removing video from playlist"
+          "Something went wrong in removing video from playlist"
         )
       );
   }

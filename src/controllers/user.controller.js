@@ -5,6 +5,14 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose"
+import { deleteOnCloudinary } from "../utils/cloudinary.js"
+import { Comment } from "../models/comment.model.js"
+import { Like } from "../models/like.model.js"
+import { Playlist } from "../models/playlist.model.js"
+import { Subscription } from "../models/subscription.model.js"
+import { Tweet } from "../models/tweet.model.js"
+import { Video } from "../models/video.model.js"
+import { View } from "../models/view.model.js"
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
@@ -547,7 +555,7 @@ const toggleWatchLater = asyncHandler(async (req, res) => {
         .json(
             new ApiResponse(
                 200,
-                {  watchLater: user.watchLater},
+                { watchLater: user.watchLater },
                 index === -1 ? "Video added to Watch Later successfully" : "Video removed from Watch Later successfully"
             )
         );
@@ -573,7 +581,54 @@ const clearWatchLater = asyncHandler(async (req, res) => {
         );
 });
 
+const deleteUser = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
+  try {
+    const user = await User.findById(userId).session(session);
+    if (!user) throw new ApiError(404, "User not found");
+
+    // 1. Delete Cloudinary profile images
+    if (user.avatar) await deleteOnCloudinary(user.avatar, "image");
+    if (user.coverImage) await deleteOnCloudinary(user.coverImage, "image");
+
+    // 2. Find all user's videos
+    const videos = await Video.find({ owner: userId }).session(session);
+    const videoIds = videos.map(v => v._id);
+
+    // 3. Delete Cloudinary video files
+    for (const video of videos) {
+      if (video.videoFilePublicId) await deleteOnCloudinary(video.videoFilePublicId, "video");
+      if (video.thumbnailPublicId) await deleteOnCloudinary(video.thumbnailPublicId, "image");
+    }
+
+    // 4. Delete related data
+    await Video.deleteMany({ owner: userId }).session(session);
+    await Playlist.deleteMany({ owner: userId }).session(session);
+    await Tweet.deleteMany({ channel: userId }).session(session);
+    await Like.deleteMany({ likedBy: userId }).session(session);
+    await Comment.deleteMany({ owner: userId }).session(session);
+    await Comment.deleteMany({ video: { $in: videoIds } }).session(session);
+    await Subscription.deleteMany({ $or: [{ subscriber: userId }, { channel: userId }] }).session(session);
+    await View.deleteMany({ $or: [{ user: userId }, { video: { $in: videoIds } }] }).session(session);
+
+    // 5. Delete user
+    await User.findByIdAndDelete(userId).session(session);
+
+    // Commit transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json(new ApiResponse(200, {}, "User and all associated data deleted successfully"));
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error("Error during user deletion:", error);
+    throw new ApiError(500, `Something went wrong while deleting the user account: ${error.message}`);
+  }
+});
 
 
 export {
@@ -594,5 +649,6 @@ export {
     clearAllWatchHistory,
     getWatchLater,
     toggleWatchLater,
-    clearWatchLater
+    clearWatchLater,
+    deleteUser
 }

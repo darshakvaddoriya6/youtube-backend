@@ -57,6 +57,12 @@
                     ref: "Video"
                 }
             ],
+            savedPlaylists: [
+                {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "Playlist"
+                }
+            ],
             password: {
                 type: String,
                 required: [true, 'Password is required'],

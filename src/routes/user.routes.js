@@ -17,7 +17,9 @@ import {
     getWatchLater,
     toggleWatchLater,
     clearWatchLater,
-    deleteUser
+    togglePlaylistSave,
+    deleteUser,
+    getSavedPlaylists
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middlewares.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -66,6 +68,10 @@ router.route("/watch-later/clear").delete(verifyJWT, clearWatchLater);
 
 // Delete user route
 router.route("/delete-account").delete(verifyJWT, deleteUser);
+
+// Playlist routes
+router.route("/playlist/toggle").post(verifyJWT, togglePlaylistSave);
+router.route("/playlist/saved").get(verifyJWT, getSavedPlaylists);
 
 
 

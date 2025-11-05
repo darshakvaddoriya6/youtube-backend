@@ -561,6 +561,84 @@ const toggleWatchLater = asyncHandler(async (req, res) => {
         );
 });
 
+const togglePlaylistSave = asyncHandler(async(req, res)=>{
+  const {playlistId} = req.body;
+  const userId = req.user._id;
+  
+
+  if(!playlistId){
+    throw new ApiError(400, "Playlist ID is required")
+  }
+
+  if(!mongoose.Types.ObjectId.isValid(playlistId)){
+    throw new ApiError(400, "Invalid playlist ID format")
+  }
+
+  const user = await User.findById(userId);
+  if(!user){
+    throw new ApiError(404, "User not found")
+  }
+
+  if (!user.savedPlaylists || !Array.isArray(user.savedPlaylists)) {
+    user.savedPlaylists = [];
+  }
+
+  const index = user.savedPlaylists.indexOf(playlistId);
+
+  if (index === -1) {
+    user.savedPlaylists.push(playlistId);
+  } else {
+    user.savedPlaylists.splice(index, 1);
+  }
+
+  await user.save();
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { savedPlaylists: user.savedPlaylists },
+        index === -1 ? "Playlist added to saved successfully" : "Playlist removed from saved successfully"
+      )
+    );
+})
+
+const getSavedPlaylists = asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+
+    const user = await User.findById(userId)
+        .populate({
+            path: 'savedPlaylists',
+            select: 'name description thumbnail videoCount isPublic owner videos',
+            populate: [
+                {
+                    path: 'owner',
+                    select: 'username avatar'
+                },
+                {
+                    path: 'videos',
+                    select: '_id title thumbnail duration views',
+                }
+            ]
+        })
+        .select('savedPlaylists');
+
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                { savedPlaylists: user.savedPlaylists || [] },
+                "Saved playlists retrieved successfully"
+            )
+        );
+});
+
 const clearWatchLater = asyncHandler(async (req, res) => {
     const userId = req.user._id;
 
@@ -649,6 +727,8 @@ export {
     clearAllWatchHistory,
     getWatchLater,
     toggleWatchLater,
+    togglePlaylistSave,
+    getSavedPlaylists,
     clearWatchLater,
     deleteUser
 }
